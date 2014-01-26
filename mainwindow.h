@@ -4,6 +4,7 @@
 #include <QMainWindow>
 #include <QVariantMap>
 #include <QScrollArea>
+#include <QProgressDialog>
 #include "datapacketdecoder.h"
 #include "logloader.h"
 #include "dataselectionscreen.h"
@@ -28,7 +29,9 @@ private:
 	FEDataPacketDecoder *decoder;
 	LogLoader *loader;
 	DataSelectionScreen *dataSelectionScreen;
+	QProgressDialog *m_progressDialog;
 private slots:
+	void logProgress(quint64 pos,quint64 total);
 	void payloadDecoded(QVariantMap map);
 	void threadDone();
 	void boxClicked(bool checked);

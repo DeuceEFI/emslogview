@@ -81,7 +81,7 @@ void QGraph::paintEvent(QPaintEvent *event)
 		p.setPen(m_colorList[j]);
 		path.moveTo(minx,miny);
 		int count = (float)(m_maxViewX - m_minViewX) / (float)(maxx-minx);
-		qDebug() << "Count:" << count;
+		//qDebug() << "Count:" << count;
 		if (count == 0)
 		{
 			count = 1;
@@ -93,13 +93,13 @@ void QGraph::paintEvent(QPaintEvent *event)
 			float x = minx + (((float)(i-m_minViewX) / (float)(m_maxViewX-m_minViewX)) * (maxx - minx));
 			if ((x-m_mouseX < mindist && x-m_mouseX > 0) || (m_mouseX-x < mindist && m_mouseX-x > 0))
 			{
-				qDebug() << x << m_mouseX << mindist;
+				//qDebug() << x << m_mouseX << mindist;
 				p.drawLine(x,miny,x,maxy);
 				p.drawText(x+10,m_mouseY + (20 * j),QString::number(m_dataList[j][i]).append("\t").append(m_nameList[j]));
 			}
 			float y = miny + ((m_dataList[j][i]/m_maxList[j]) * (maxy-miny));
 			path.lineTo(x,y);
-			path.addEllipse(x-2.5,y-2.5,5,5);
+			//path.addEllipse(x-2.5,y-2.5,5,5);
 			path.moveTo(x,y);
 		}
 
@@ -114,10 +114,13 @@ void QGraph::mouseMoveEvent(QMouseEvent *event)
 	}
 	if (m_mouseDown)
 	{
-		if ((m_minViewX + (m_mouseX - event->pos().x()) > 0) && (m_maxViewX + (m_mouseX - event->pos().x()) <= m_dataList[0].size()-1))
+		double mult = (double)(m_maxViewX - m_minViewX) / (double)width();
+		int newminval = m_minViewX + ((m_mouseX - event->pos().x()) * mult);
+		int newmaxval = m_maxViewX + ((m_mouseX - event->pos().x()) * mult);
+		if ((newminval > 0) && (newmaxval <= m_dataList[0].size()-1))
 		{
-			m_minViewX += m_mouseX - event->pos().x();
-			m_maxViewX += m_mouseX - event->pos().x();
+			m_minViewX += (m_mouseX - event->pos().x()) * mult;
+			m_maxViewX += (m_mouseX - event->pos().x()) * mult;
 		}
 
 

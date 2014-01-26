@@ -135,8 +135,14 @@ void LogLoader::run()
 		bool m_inescape = false;
 		int m_packetErrorCount=0;
 		int readlen=0;
+		int logsignalcount = 0;
 		while (!logfile.atEnd())
 		{
+			logsignalcount++;
+			if (logsignalcount >= 5)
+			{
+				emit loadProgress(logfile.pos(),logfile.size());
+			}
 
 			QByteArray buffer = logfile.read(1024);
 			readlen = buffer.size();

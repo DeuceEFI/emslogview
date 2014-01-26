@@ -44,6 +44,7 @@ signals:
 	void decoderFailure(QByteArray buffer);
 	void incomingDatalogPacket(QByteArray data);
 	void done();
+	void loadProgress(quint64 pos,quint64 total);
 public slots:
 	
 };

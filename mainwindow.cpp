@@ -31,6 +31,10 @@ MainWindow::MainWindow(QWidget *parent) :
 	dataSelectionScreen->setVisible(false);
 	this->setAttribute(Qt::WA_DeleteOnClose,true);
 }
+void MainWindow::logProgress(quint64 pos,quint64 total)
+{
+	m_progressDialog->setValue(100.0 * ((double)pos / (double)total));
+}
 
 MainWindow::~MainWindow()
 {
@@ -91,6 +95,8 @@ void MainWindow::selectDialogClicked()
 
 void MainWindow::threadDone()
 {
+	m_progressDialog->hide();
+	delete m_progressDialog;
 	qDebug() << variantList.size() << "records loaded";
 	for (QVariantMap::const_iterator i=variantList[0].constBegin();i!=variantList[0].constEnd();i++)
 	{
@@ -151,9 +157,12 @@ void MainWindow::fileOpenClicked()
 	loader = new LogLoader();
 	//connect(loader,SIGNAL(incomingDatalogPacket(QByteArray)),decoder,SLOT(decodePayload(QByteArray)));
 	connect(loader,SIGNAL(done()),this,SLOT(threadDone()));
+	connect(loader,SIGNAL(loadProgress(quint64,quint64)),this,SLOT(logProgress(quint64,quint64)));
 	//connect(decoder,SIGNAL(payloadDecoded(QVariantMap)),this,SLOT(payloadDecoded(QVariantMap)));
 	connect(loader,SIGNAL(payloadDecoded(QVariantMap)),this,SLOT(payloadDecoded(QVariantMap)));
 	loader->loadFile(filename);
+	m_progressDialog = new QProgressDialog("Loading file....","Cancel",0,100);
+	m_progressDialog->show();
 
 }
 
