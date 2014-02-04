@@ -20,7 +20,7 @@
      <x>0</x>
      <y>0</y>
      <width>657</width>
-     <height>27</height>
+     <height>29</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -37,8 +37,14 @@
     </property>
     <addaction name="actionSelect_Dialog"/>
    </widget>
+   <widget class="QMenu" name="menuActive_Plugin">
+    <property name="title">
+     <string>Active Plugin</string>
+    </property>
+   </widget>
    <addaction name="menuFile"/>
    <addaction name="menuTools"/>
+   <addaction name="menuActive_Plugin"/>
   </widget>
   <widget class="QToolBar" name="mainToolBar">
    <attribute name="toolBarArea">

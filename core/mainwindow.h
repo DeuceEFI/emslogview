@@ -5,10 +5,11 @@
 #include <QVariantMap>
 #include <QScrollArea>
 #include <QProgressDialog>
-#include "datapacketdecoder.h"
-#include "logloader.h"
 #include "dataselectionscreen.h"
 #include "qgraph.h"
+#include "mapview.h"
+#include "emslogviewplugin.h"
+#include <QPluginLoader>
 
 namespace Ui {
 class MainWindow;
@@ -26,11 +27,15 @@ private:
 	Ui::MainWindow *ui;
 	QList<QVariantMap> variantList;
 	QGraph *graph;
-	FEDataPacketDecoder *decoder;
-	LogLoader *loader;
 	DataSelectionScreen *dataSelectionScreen;
 	QProgressDialog *m_progressDialog;
+	MapView *mapView;
+	EmsLogViewPlugin *m_currentPlugin;
+	QMap<QAction*,QString> m_actionToFilenameMap;
+	QString m_currentPluginFile;
+	QString m_currentPluginName;
 private slots:
+	void actionTriggered(bool checked);
 	void logProgress(quint64 pos,quint64 total);
 	void payloadDecoded(QVariantMap map);
 	void threadDone();

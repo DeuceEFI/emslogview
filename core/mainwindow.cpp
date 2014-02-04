@@ -2,20 +2,20 @@
 #include <QVBoxLayout>
 #include <QCheckBox>
 #include <QFileDialog>
+#include <qjson/parser.h>
+#include <QSettings>
 
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 #include "egraph.h"
 #include "qgraph.h"
-#include "logloader.h"
-#include "datapacketdecoder.h"
 MainWindow::MainWindow(QWidget *parent) :
 	QMainWindow(parent),
 	ui(new Ui::MainWindow)
 {
 	ui->setupUi(this);
-	decoder = 0;
-	loader = 0;
+	m_progressDialog=0;
+	mapView = 0;
 	connect(ui->actionOpen_Log,SIGNAL(triggered()),this,SLOT(fileOpenClicked()));
 	connect(ui->actionClose_Log,SIGNAL(triggered()),this,SLOT(fileCloseClicked()));
 	connect(ui->actionQuit,SIGNAL(triggered()),this,SLOT(fileQuitClicked()));
@@ -30,7 +30,79 @@ MainWindow::MainWindow(QWidget *parent) :
 
 	dataSelectionScreen->setVisible(false);
 	this->setAttribute(Qt::WA_DeleteOnClose,true);
+
+	QFile pluginfile("plugins.json");
+	pluginfile.open(QIODevice::ReadOnly);
+	QJson::Parser parser;
+	bool ok = false;
+	QVariant result = parser.parse(pluginfile.readAll(),&ok);
+	pluginfile.close();
+	if (!ok)
+	{
+		qDebug() << "Unable to load plugin list:" << parser.errorString();
+		return;
+	}
+	QVariantMap resultmap = result.toMap();
+	QVariantList list = resultmap.value("plugins").toList();
+	QSettings settings;
+	QString last = settings.value("lastusedplugin").toString();
+	for (int i=0;i<list.size();i++)
+	{
+		QVariantMap item = list.at(i).toMap();
+		QString file = item.value("filename").toString();
+		QString name = item.value("name").toString();
+		QAction *action = new QAction(this);
+		connect(action,SIGNAL(triggered(bool)),this,SLOT(actionTriggered(bool)));
+		action->setCheckable(true);
+		action->setText(name);
+		if (last != "" && name == last)
+		{
+			action->setChecked(true);
+			m_currentPluginName = name;
+			m_currentPluginFile = file;
+			this->setWindowTitle("EMSLogView - Plugin: " + m_currentPluginName);
+		}
+		m_actionToFilenameMap[action] = file;
+		ui->menuActive_Plugin->addAction(action);
+	}
+
 }
+void MainWindow::actionTriggered(bool checked)
+{
+	if (checked)
+	{
+		for (int i=0;i<ui->menuActive_Plugin->actions().size();i++)
+		{
+			if (ui->menuActive_Plugin->actions().at(i) != sender())
+			{
+				ui->menuActive_Plugin->actions().at(i)->setChecked(false);
+			}
+			else
+			{
+				if (m_actionToFilenameMap.contains(ui->menuActive_Plugin->actions().at(i)))
+				{
+					QSettings settings;
+					settings.setValue("lastusedplugin",m_currentPluginName);
+					settings.sync();
+					m_currentPluginFile = m_actionToFilenameMap.value(ui->menuActive_Plugin->actions().at(i));
+					m_currentPluginName = ui->menuActive_Plugin->actions().at(i)->text();
+					this->setWindowTitle("EMSLogView - Plugin: " + m_currentPluginName);
+				}
+			}
+		}
+	}
+	else
+	{
+		for (int i=0;i<ui->menuActive_Plugin->actions().size();i++)
+		{
+			if (ui->menuActive_Plugin->actions().at(i) == sender())
+			{
+				ui->menuActive_Plugin->actions().at(i)->setChecked(true);
+			}
+		}
+	}
+}
+
 void MainWindow::logProgress(quint64 pos,quint64 total)
 {
 	m_progressDialog->setValue(100.0 * ((double)pos / (double)total));
@@ -40,6 +112,18 @@ MainWindow::~MainWindow()
 {
 	//delete ui;
 	//delete dataSelectionScreen;
+	if (dataSelectionScreen)
+	{
+		delete dataSelectionScreen;
+	}
+	if (m_progressDialog)
+	{
+		delete m_progressDialog;
+	}
+	if (mapView)
+	{
+		delete mapView;
+	}
 }
 void MainWindow::payloadDecoded(QVariantMap map)
 {
@@ -95,55 +179,22 @@ void MainWindow::selectDialogClicked()
 
 void MainWindow::threadDone()
 {
+	mapView = new MapView();
+
 	m_progressDialog->hide();
 	delete m_progressDialog;
+	m_progressDialog = 0;
 	qDebug() << variantList.size() << "records loaded";
 	for (QVariantMap::const_iterator i=variantList[0].constBegin();i!=variantList[0].constEnd();i++)
 	{
 		dataSelectionScreen->addItem(i.key());
+		mapView->addItem(i.key());
 	}
 	dataSelectionScreen->show();
 	dataSelectionScreen->setGeometry(100,100,400,600);
-	/*QList<float> list;
-	for (int i=0;i<variantList.size();i++)
-	{
-		list.append(variantList[i]["RPM"].toFloat());
-	}
-	graph->addData(list,"RPM");
-
-	list.clear();
-	for (int i=0;i<variantList.size();i++)
-	{
-		list.append(variantList[i]["TPS"].toFloat());
-	}
-	graph->addData(list,"TPS");
-
-	list.clear();
-	for (int i=0;i<variantList.size();i++)
-	{
-		list.append(variantList[i]["EGO"].toFloat());
-	}
-	graph->addData(list,"EGO");
-
-	*/
-
-	/*list.clear();
-	for (int i=0;i<variantList.size();i++)
-	{
-		list.append(variantList[i]["Lambda"].toFloat());
-	}
-	graph->addData(list,"Lambda");
-
-	list.clear();
-	for (int i=0;i<variantList.size();i++)
-	{
-		float lambda = variantList[i]["Lambda"].toFloat();
-		float VE = variantList[i]["VEMain"].toFloat();
-		float ego = variantList[i]["EGO"].toFloat();
-		float newval = (VE / lambda) * ego;
-		list.append(newval);
-	}
-	graph->addData(list,"IntendedVE");*/
+	mapView->show();
+	mapView->setGeometry(100,100,800,600);
+	mapView->setData(&variantList);
 }
 void MainWindow::fileOpenClicked()
 {
@@ -154,34 +205,36 @@ void MainWindow::fileOpenClicked()
 	}
 	fileCloseClicked();
 	//decoder = new FEDataPacketDecoder();
-	loader = new LogLoader();
+	QPluginLoader *loader = new QPluginLoader(this);
+	loader->setFileName(m_currentPluginFile);
+	if (!loader->load())
+	{
+		qDebug() << "Error loading plugin:" << loader->errorString();
+		return;
+	}
+	m_currentPlugin = qobject_cast<EmsLogViewPlugin*>(loader->instance());
+
 	//connect(loader,SIGNAL(incomingDatalogPacket(QByteArray)),decoder,SLOT(decodePayload(QByteArray)));
-	connect(loader,SIGNAL(done()),this,SLOT(threadDone()));
-	connect(loader,SIGNAL(loadProgress(quint64,quint64)),this,SLOT(logProgress(quint64,quint64)));
+	connect(m_currentPlugin,SIGNAL(done()),this,SLOT(threadDone()));
+	connect(m_currentPlugin,SIGNAL(loadProgress(quint64,quint64)),this,SLOT(logProgress(quint64,quint64)));
 	//connect(decoder,SIGNAL(payloadDecoded(QVariantMap)),this,SLOT(payloadDecoded(QVariantMap)));
-	connect(loader,SIGNAL(payloadDecoded(QVariantMap)),this,SLOT(payloadDecoded(QVariantMap)));
-	loader->loadFile(filename);
+	connect(m_currentPlugin,SIGNAL(payloadDecoded(QVariantMap)),this,SLOT(payloadDecoded(QVariantMap)));
+
 	m_progressDialog = new QProgressDialog("Loading file....","Cancel",0,100);
 	m_progressDialog->show();
+	m_currentPlugin->loadLog(filename);
 
 }
 
 void MainWindow::fileCloseClicked()
 {
 	graph->clear();
-	if (decoder)
+	if (mapView)
 	{
-		disconnect(decoder,SIGNAL(payloadDecoded(QVariantMap)),this,SLOT(payloadDecoded(QVariantMap)));
-		delete decoder;
-		decoder = 0;
+		delete mapView;
+		mapView = 0;
 	}
-	if (loader)
-	{
-		disconnect(loader,SIGNAL(incomingDatalogPacket(QByteArray)),decoder,SLOT(decodePayload(QByteArray)));
-		disconnect(loader,SIGNAL(done()),this,SLOT(threadDone()));
-		delete loader;
-		loader = 0;
-	}
+	dataSelectionScreen->hide();
 }
 
 void MainWindow::fileQuitClicked()

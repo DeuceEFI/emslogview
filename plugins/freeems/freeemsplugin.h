@@ -1,15 +1,15 @@
-#ifndef LOGLOADER_H
-#define LOGLOADER_H
-
-#include <QThread>
-#include "datapacketdecoder.h"
-
-class LogLoader : public QThread
+#ifndef FREEEMSPLUGIN_H
+#define FREEEMSPLUGIN_H
+#include "emslogviewplugin.h"
+#include "fedatapacketdecoder.h"
+class FreeEMSPlugin : public EmsLogViewPlugin
 {
 	Q_OBJECT
+	Q_INTERFACES(EmsLogViewPlugin)
 public:
-	explicit LogLoader(QObject *parent = 0);
-	void loadFile(QString file);
+	FreeEMSPlugin(QObject *parent=0);
+	void loadLog(QString log);
+private:
 	class Packet
 	{
 	public:
@@ -24,9 +24,7 @@ public:
 		bool hasseq;
 		unsigned short sequencenum;
 	};
-private:
-	Packet parseBuffer(QByteArray buffer);
-	void loadDataFieldsFromValues();
+	FEDataPacketDecoder *decoder;
 	QString m_fileName;
 	int m_badChecksums;
 	int m_falseStarts;
@@ -36,17 +34,13 @@ private:
 	int m_badEscapeChar;
 	int m_locationIdInfoReq;
 	int m_locationIdInfoReply;
-	FEDataPacketDecoder *decoder;
+	Packet parseBuffer(QByteArray buffer);
 protected:
 	void run();
 signals:
-	void payloadDecoded(QVariantMap map);
-	void decoderFailure(QByteArray buffer);
-	void incomingDatalogPacket(QByteArray data);
-	void done();
 	void loadProgress(quint64 pos,quint64 total);
-public slots:
-	
+	void done();
+	void payloadDecoded(QVariantMap payload);
 };
 
-#endif // LOGLOADER_H
+#endif // FREEEMSPLUGIN_H
