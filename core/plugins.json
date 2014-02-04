@@ -6,10 +6,6 @@
        "name" : "FreeEMS"
      },
      {
-       "filename" : "libeblplugin.so",
-       "name" : "Embedded Lockers"
-     },
-     {
        "filename" : "libmegasquirtplugin.so",
        "name" : "Megasquirt"
      }
